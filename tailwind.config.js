@@ -2,7 +2,8 @@
 module.exports = {
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
-    "./public/index.html", // Also include index.html if you use Tailwind classes there
+    "./src/app.js", // Explicitly include app.js
+    "./public/index.html",
   ],
   theme: {
     extend: {

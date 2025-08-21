@@ -642,21 +642,26 @@ const HierarchyView = ({ data, onSelectGpu, selectedGpu }) => {
   useEffect(() => {
     const svg = d3.select(svgRef.current);
     const margin = { top: 20, right: 90, bottom: 30, left: 90 };
-    const width =
-      svgRef.current.parentElement.clientWidth - margin.left - margin.right;
+    // Calculate a dynamic width based on the number of architecture/series levels
+    // This helps in preventing content cutoff and makes the scrollbar useful
+    const dynamicWidth = Math.max(
+      svgRef.current.parentElement.clientWidth - margin.left - margin.right, // Minimum width
+      data.length * 150 // Adjust multiplier as needed for tree density
+    );
     const height = 600 - margin.top - margin.bottom;
 
     svg.selectAll("*").remove(); // Clear previous render
 
     svg
-      .attr("width", width + margin.left + margin.right)
+      .attr("width", dynamicWidth + margin.left + margin.right) // Set dynamic width
       .attr("height", height + margin.top + margin.bottom);
 
     const g = svg
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    const treeLayout = d3.tree().size([height, width]);
+    // Use dynamicWidth for the tree layout
+    const treeLayout = d3.tree().size([height, dynamicWidth]);
 
     // Create hierarchy data based on the *passed in* 'data'
     const hierarchyRootData = createHierarchyData(data); // Use the data prop here
@@ -724,8 +729,10 @@ const HierarchyView = ({ data, onSelectGpu, selectedGpu }) => {
   return (
     <div className="p-4 bg-gray-800 rounded-lg shadow-xl mb-6">
       <h2 className="text-2xl font-bold mb-4 text-orange-400">GPU Hierarchy</h2>
+      {/* Added Tailwind class 'overflow-x-auto' here */}
       <div className="overflow-x-auto">
-        <svg ref={svgRef} className="min-w-[800px]"></svg>
+        <svg ref={svgRef} className="min-w-full"></svg>{" "}
+        {/* Ensure SVG can take full width for scrolling */}
       </div>
     </div>
   );
