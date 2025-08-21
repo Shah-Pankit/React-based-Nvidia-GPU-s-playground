@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* You can add any custom global CSS here if needed, but for this app, Tailwind handles most styling. */
+body {
+  font-family: "Inter", sans-serif;
+}
