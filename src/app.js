@@ -636,37 +636,57 @@ const TimelineView = ({ data, onSelectGpu, selectedGpu }) => {
 
 // HierarchyView Component (using D3.js)
 const HierarchyView = ({ data, onSelectGpu, selectedGpu }) => {
-  // Now accepts 'data' prop
   const svgRef = useRef();
 
   useEffect(() => {
     const svg = d3.select(svgRef.current);
-    const margin = { top: 20, right: 90, bottom: 30, left: 90 };
-    // Calculate a dynamic width based on the number of architecture/series levels
-    // This helps in preventing content cutoff and makes the scrollbar useful
-    const dynamicWidth = Math.max(
-      svgRef.current.parentElement.clientWidth - margin.left - margin.right, // Minimum width
-      data.length * 150 // Adjust multiplier as needed for tree density
-    );
+    const margin = { top: 20, right: 150, bottom: 30, left: 90 }; // Increased right margin for labels
     const height = 600 - margin.top - margin.bottom;
 
     svg.selectAll("*").remove(); // Clear previous render
 
+    // Define tree layout (size here is for vertical and horizontal spread, will adjust overall width later)
+    const treeLayout = d3.tree().size([height, 1]); // Set width to 1 initially, will scale later
+
+    // Create hierarchy data based on the *passed in* 'data'
+    const hierarchyRootData = createHierarchyData(data);
+    const root = d3.hierarchy(hierarchyRootData);
+    treeLayout(root);
+
+    // Calculate actual width needed for the tree, including labels
+    let maxY = 0;
+    root.each((d) => {
+      // For leaf nodes, consider the length of the text label
+      // Approximate character width (adjust as needed for font size and character set)
+      const approxCharWidth = 7;
+      const textWidth = d.data.name.length * approxCharWidth;
+      maxY = Math.max(maxY, d.y + (d.children ? 0 : textWidth + 20)); // Add extra for leaf labels padding
+    });
+
+    const parentWidth = svgRef.current.parentElement.clientWidth;
+    // Ensure the SVG is at least as wide as its parent container, or wide enough for its content
+    const dynamicWidth = Math.max(
+      parentWidth - margin.left - margin.right, // Minimum width needed for parent
+      maxY // The calculated max Y, which represents the effective width of the tree
+    );
+
     svg
-      .attr("width", dynamicWidth + margin.left + margin.right) // Set dynamic width
+      .attr("width", dynamicWidth + margin.left + margin.right) // Set dynamic width for the SVG
       .attr("height", height + margin.top + margin.bottom);
 
     const g = svg
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Use dynamicWidth for the tree layout
-    const treeLayout = d3.tree().size([height, dynamicWidth]);
+    // Scale the tree horizontally to fit the dynamicWidth more effectively
+    const xScale = d3
+      .scaleLinear()
+      .domain([0, d3.max(root.descendants(), (d) => d.y)])
+      .range([0, dynamicWidth - (margin.left + margin.right)]); // Adjusted range
 
-    // Create hierarchy data based on the *passed in* 'data'
-    const hierarchyRootData = createHierarchyData(data); // Use the data prop here
-    const root = d3.hierarchy(hierarchyRootData);
-    treeLayout(root);
+    root.each((d) => {
+      d.y = xScale(d.y); // Apply scaling to node horizontal positions (depth)
+    });
 
     // Links
     g.selectAll(".link")
@@ -719,7 +739,7 @@ const HierarchyView = ({ data, onSelectGpu, selectedGpu }) => {
     node
       .append("text")
       .attr("dy", "0.31em")
-      .attr("x", (d) => (d.children ? -10 : 10))
+      .attr("x", (d) => (d.children ? -10 : 10)) // Keep offset from circle
       .attr("text-anchor", (d) => (d.children ? "end" : "start"))
       .text((d) => d.data.name)
       .attr("fill", "#ccc")
@@ -729,10 +749,9 @@ const HierarchyView = ({ data, onSelectGpu, selectedGpu }) => {
   return (
     <div className="p-4 bg-gray-800 rounded-lg shadow-xl mb-6">
       <h2 className="text-2xl font-bold mb-4 text-orange-400">GPU Hierarchy</h2>
-      {/* Added Tailwind class 'overflow-x-auto' here */}
+      {/* This div enables horizontal scrolling when content overflows */}
       <div className="overflow-x-auto">
-        <svg ref={svgRef} className="min-w-full"></svg>{" "}
-        {/* Ensure SVG can take full width for scrolling */}
+        <svg ref={svgRef}></svg>
       </div>
     </div>
   );
